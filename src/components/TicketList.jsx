@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
+import TicketComments from './TicketComments';
 
 export default function TicketList({ user, refreshTrigger }) {
   const [tickets, setTickets] = useState([]);
@@ -7,6 +8,7 @@ export default function TicketList({ user, refreshTrigger }) {
   const [errorMsg, setErrorMsg] = useState(null);
   const [statusFilter, setStatusFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [expandedTicketId, setExpandedTicketId] = useState(null);
 
   const fetchTickets = useCallback(async () => {
     if (!user) return;
@@ -45,11 +47,11 @@ export default function TicketList({ user, refreshTrigger }) {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'Pending':
-        return 'bg-amber-950/50 text-amber-300 border-amber-800/80';
+        return 'bg-amber-950/60 text-amber-300 border-amber-800/80';
       case 'In Progress':
-        return 'bg-sky-950/50 text-sky-300 border-sky-800/80';
+        return 'bg-sky-950/60 text-sky-300 border-sky-800/80';
       case 'Resolved':
-        return 'bg-emerald-950/50 text-emerald-300 border-emerald-800/80';
+        return 'bg-emerald-950/60 text-emerald-300 border-emerald-800/80';
       case 'Closed':
         return 'bg-slate-800 text-slate-400 border-slate-700';
       default:
@@ -73,23 +75,23 @@ export default function TicketList({ user, refreshTrigger }) {
   };
 
   return (
-    <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-xl p-6 transition-all hover:border-slate-700/80">
+    <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-xl p-4 sm:p-6 transition-all hover:border-slate-700/80">
       {/* Header & Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800">
         <div>
-          <h2 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-            My Support Tickets
-            <span className="px-2 py-0.5 text-xs font-medium bg-blue-950 text-blue-400 border border-blue-800/60 rounded-full">
+          <h2 className="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
+            <span>My Support Tickets</span>
+            <span className="px-2.5 py-0.5 text-xs font-semibold bg-blue-950 text-blue-300 border border-blue-800 rounded-full">
               {tickets.length} Total
             </span>
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">Track and view status updates on your submitted requests</p>
+          <p className="text-xs text-slate-400 mt-0.5">Track, view updates, and add comments to your submitted tickets</p>
         </div>
 
         <button
           onClick={fetchTickets}
           disabled={loading}
-          className="self-start sm:self-auto px-3 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 active:scale-95"
+          className="self-start sm:self-auto px-3 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 active:scale-95 shrink-0"
         >
           <svg className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -99,7 +101,7 @@ export default function TicketList({ user, refreshTrigger }) {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+      <div className="flex flex-col md:flex-row gap-3 mb-6">
         <div className="relative flex-1">
           <input
             type="text"
@@ -131,7 +133,7 @@ export default function TicketList({ user, refreshTrigger }) {
         </div>
       </div>
 
-      {/* Error Banner */}
+      {/* Error Alert */}
       {errorMsg && (
         <div className="mb-6 p-4 rounded-xl bg-rose-950/60 border border-rose-800/60 text-rose-300 text-xs flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -144,21 +146,19 @@ export default function TicketList({ user, refreshTrigger }) {
         </div>
       )}
 
-      {/* Loading State */}
+      {/* Loading Skeletons */}
       {loading ? (
-        <div className="py-12 text-center">
-          <div className="inline-flex items-center justify-center p-4 bg-slate-950 border border-slate-800 rounded-2xl mb-3">
-            <svg className="animate-spin h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
-          </div>
-          <p className="text-sm font-medium text-slate-300">Loading your tickets...</p>
-          <p className="text-xs text-slate-500 mt-1">Connecting to Supabase Database</p>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-xl animate-pulse space-y-2">
+              <div className="h-4 bg-slate-800 rounded w-1/3"></div>
+              <div className="h-3 bg-slate-800/60 rounded w-2/3"></div>
+            </div>
+          ))}
         </div>
       ) : filteredTickets.length === 0 ? (
         /* Empty State */
-        <div className="py-12 text-center border-2 border-dashed border-slate-800 rounded-2xl bg-slate-950/40 p-8">
+        <div className="py-12 text-center border-2 border-dashed border-slate-800/80 rounded-2xl bg-slate-950/40 p-8">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 text-slate-500 mb-3">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -168,59 +168,95 @@ export default function TicketList({ user, refreshTrigger }) {
           <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
             {searchQuery || statusFilter !== 'All'
               ? 'No tickets match your active filter or search query.'
-              : 'You have not submitted any IT support tickets yet. Use the form to submit your first ticket.'}
+              : 'You have not submitted any IT support tickets yet. Use the form above to submit your first ticket.'}
           </p>
         </div>
       ) : (
-        /* Ticket Grid / Table View */
-        <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-800 bg-slate-950/90 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                <th className="px-4 py-3">Title & Details</th>
-                <th className="px-4 py-3">Category</th>
-                <th className="px-4 py-3">Submitted</th>
-                <th className="px-4 py-3 text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 text-xs">
-              {filteredTickets.map((t) => (
-                <tr key={t.id} className="hover:bg-slate-800/40 transition-colors group">
-                  <td className="px-4 py-3.5">
-                    <p className="font-semibold text-slate-100 group-hover:text-blue-400 transition-colors">
-                      {t.title}
-                    </p>
+        /* Ticket List Container */
+        <div className="space-y-3">
+          {filteredTickets.map((t) => {
+            const isExpanded = expandedTicketId === t.id;
+
+            return (
+              <div
+                key={t.id}
+                className="bg-slate-950/80 border border-slate-800 rounded-xl overflow-hidden transition-all hover:border-slate-700/80"
+              >
+                {/* Ticket Header Row */}
+                <div
+                  onClick={() => setExpandedTicketId(isExpanded ? null : t.id)}
+                  className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 cursor-pointer hover:bg-slate-900/50 transition-colors"
+                >
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-base">{getCategoryIcon(t.category)}</span>
+                      <h3 className="font-semibold text-slate-100 text-sm hover:text-blue-400 transition-colors">
+                        {t.title}
+                      </h3>
+                      <span className={`px-2 py-0.5 rounded-md border text-[10px] font-semibold ${getStatusBadge(t.status)}`}>
+                        {t.status}
+                      </span>
+                    </div>
+
                     {t.description && (
-                      <p className="text-slate-400 text-[11px] line-clamp-1 mt-0.5 max-w-md">
+                      <p className="text-slate-400 text-xs line-clamp-1">
                         {t.description}
                       </p>
                     )}
-                  </td>
-                  <td className="px-4 py-3.5 whitespace-nowrap">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 text-[11px] font-medium">
-                      <span>{getCategoryIcon(t.category)}</span>
-                      <span>{t.category}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800/60 text-[11px] text-slate-500">
+                    <span>
+                      {new Date(t.created_at).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
                     </span>
-                  </td>
-                  <td className="px-4 py-3.5 whitespace-nowrap text-slate-400 text-[11px]">
-                    {new Date(t.created_at).toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </td>
-                  <td className="px-4 py-3.5 whitespace-nowrap text-right">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold ${getStatusBadge(t.status)}`}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                      {t.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+                    <button
+                      type="button"
+                      className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700/80 rounded-lg text-xs font-medium transition-all flex items-center gap-1"
+                    >
+                      <span>{isExpanded ? 'Hide Comments' : 'Comments & Details'}</span>
+                      <svg
+                        className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Expanded Details & Comments Panel */}
+                {isExpanded && (
+                  <div className="p-4 bg-slate-900/60 border-t border-slate-800/80 space-y-4">
+                    {t.description && (
+                      <div>
+                        <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          Ticket Description
+                        </h4>
+                        <p className="text-xs text-slate-200 bg-slate-950 p-3 rounded-xl border border-slate-800/80 whitespace-pre-wrap">
+                          {t.description}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Integrated Comment System */}
+                    <TicketComments
+                      ticketId={t.id}
+                      currentUser={user}
+                      currentUserRole="user"
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

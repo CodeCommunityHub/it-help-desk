@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import UserManagement from './UserManagement';
+import TicketComments from './TicketComments';
 
 /**
  * AdminDashboard Component
  * Adheres to SOLID principles:
- * - Single Responsibility: Manages IT ticket dispatching, staff workload assignments, and basic user account activation/removal.
+ * - Single Responsibility: Manages IT ticket dispatching, staff workload assignments, user activation, and ticket comment oversight.
  */
 export default function AdminDashboard({ user }) {
   const [tickets, setTickets] = useState([]);
@@ -19,6 +20,7 @@ export default function AdminDashboard({ user }) {
   const [assignmentFilter, setAssignmentFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserManager, setShowUserManager] = useState(false);
+  const [expandedTicketId, setExpandedTicketId] = useState(null);
 
   // Fetch tickets and profiles
   const fetchData = useCallback(async () => {
@@ -113,7 +115,7 @@ export default function AdminDashboard({ user }) {
     }
   };
 
-  // Handle role modification (Admin view delegates or super admin updates)
+  // Handle role modification
   const handleRoleChange = async (profileId, newRole) => {
     try {
       const { error } = await supabase
@@ -228,7 +230,7 @@ export default function AdminDashboard({ user }) {
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Oversee agency tickets, assign tasks to staff members, and activate new user accounts
+              Oversee tickets, assign tasks to IT staff members, respond to comments, and activate new user accounts
             </p>
           </div>
         </div>
@@ -316,7 +318,7 @@ export default function AdminDashboard({ user }) {
       )}
 
       {/* Main Tickets Table Container */}
-      <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-xl p-6 space-y-6">
+      <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-xl p-4 sm:p-6 space-y-6">
         {/* Controls and Search */}
         <div className="flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center">
           <div className="relative flex-1">
@@ -360,21 +362,25 @@ export default function AdminDashboard({ user }) {
           </div>
         </div>
 
-        {/* Tickets Table */}
+        {/* Loading Skeleton */}
         {loading ? (
-          <div className="py-12 text-center">
-            <div className="inline-flex items-center justify-center p-4 bg-slate-950 border border-slate-800 rounded-2xl mb-3">
-              <svg className="animate-spin h-6 w-6 text-purple-400" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-            </div>
-            <p className="text-sm font-medium text-slate-300">Loading agency tickets...</p>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-xl animate-pulse space-y-2">
+                <div className="h-4 bg-slate-800 rounded w-1/3"></div>
+                <div className="h-3 bg-slate-800/60 rounded w-2/3"></div>
+              </div>
+            ))}
           </div>
         ) : filteredTickets.length === 0 ? (
           <div className="py-12 text-center border-2 border-dashed border-slate-800 rounded-2xl bg-slate-950/40 p-8">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 text-slate-500 mb-3">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
             <h3 className="text-sm font-semibold text-slate-300">No Tickets Found</h3>
-            <p className="text-xs text-slate-500 mt-1">Try clearing your filters or search query.</p>
+            <p className="text-xs text-slate-500 mt-1">Try clearing your active filters or search query.</p>
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60">
@@ -389,70 +395,89 @@ export default function AdminDashboard({ user }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 text-xs">
-                {filteredTickets.map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="px-4 py-4 max-w-xs sm:max-w-md">
-                      <p className="font-semibold text-slate-100">{t.title}</p>
-                      {t.description && (
-                        <p className="text-slate-400 text-[11px] line-clamp-2 mt-1">{t.description}</p>
-                      )}
-                      <p className="text-[10px] text-slate-500 mt-1">
-                        Submitted: {new Date(t.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </td>
+                {filteredTickets.map((t) => {
+                  const isExpanded = expandedTicketId === t.id;
 
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 text-[11px]">
-                        {t.category}
-                      </span>
-                    </td>
-
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-medium ${getStatusBadge(t.status)}`}>
-                        {t.status}
-                      </span>
-                    </td>
-
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <select
-                          value={t.assigned_to || ''}
-                          disabled={updatingTicketId === t.id}
-                          onChange={(e) => handleAssignChange(t.id, e.target.value)}
-                          className={`px-3 py-1.5 rounded-xl text-xs border font-medium transition-all ${
-                            !t.assigned_to
-                              ? 'bg-amber-950/40 border-amber-800/70 text-amber-300 focus:ring-amber-500'
-                              : 'bg-slate-900 border-slate-700 text-slate-200 focus:ring-purple-500'
-                          }`}
-                        >
-                          <option value="">-- Unassigned --</option>
-                          {staffList.map((staff) => (
-                            <option key={staff.id} value={staff.id}>
-                              🧑‍💻 {staff.email}
-                            </option>
-                          ))}
-                        </select>
-
-                        {updatingTicketId === t.id && (
-                          <svg className="animate-spin h-4 w-4 text-purple-400" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                          </svg>
+                  return (
+                    <tr key={t.id} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="px-4 py-4 max-w-xs sm:max-w-md">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-slate-100">{t.title}</p>
+                          <button
+                            onClick={() => setExpandedTicketId(isExpanded ? null : t.id)}
+                            className="text-[10px] text-purple-400 hover:underline"
+                          >
+                            {isExpanded ? 'Hide Discussion' : '💬 Discussion'}
+                          </button>
+                        </div>
+                        {t.description && (
+                          <p className="text-slate-400 text-[11px] line-clamp-2 mt-1">{t.description}</p>
                         )}
-                      </div>
-                    </td>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          Submitted: {new Date(t.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </p>
 
-                    <td className="px-4 py-4 whitespace-nowrap text-right">
-                      <button
-                        onClick={() => handleDeleteTicket(t.id)}
-                        className="px-2.5 py-1 bg-slate-950 hover:bg-rose-950/50 text-slate-400 hover:text-rose-300 border border-slate-800 hover:border-rose-800/60 rounded-lg text-xs transition-all"
-                        title="Delete Ticket"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                        {/* Expandable Comment Section */}
+                        {isExpanded && (
+                          <div className="mt-3 pt-2">
+                            <TicketComments ticketId={t.id} currentUser={user} currentUserRole="admin" />
+                          </div>
+                        )}
+                      </td>
+
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 text-[11px]">
+                          {t.category}
+                        </span>
+                      </td>
+
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-medium ${getStatusBadge(t.status)}`}>
+                          {t.status}
+                        </span>
+                      </td>
+
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={t.assigned_to || ''}
+                            disabled={updatingTicketId === t.id}
+                            onChange={(e) => handleAssignChange(t.id, e.target.value)}
+                            className={`px-3 py-1.5 rounded-xl text-xs border font-medium transition-all ${
+                              !t.assigned_to
+                                ? 'bg-amber-950/40 border-amber-800/70 text-amber-300 focus:ring-amber-500'
+                                : 'bg-slate-900 border-slate-700 text-slate-200 focus:ring-purple-500'
+                            }`}
+                          >
+                            <option value="">-- Unassigned --</option>
+                            {staffList.map((staff) => (
+                              <option key={staff.id} value={staff.id}>
+                                🧑‍💻 {staff.email}
+                              </option>
+                            ))}
+                          </select>
+
+                          {updatingTicketId === t.id && (
+                            <svg className="animate-spin h-4 w-4 text-purple-400" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-4 whitespace-nowrap text-right">
+                        <button
+                          onClick={() => handleDeleteTicket(t.id)}
+                          className="px-2.5 py-1 bg-slate-950 hover:bg-rose-950/50 text-slate-400 hover:text-rose-300 border border-slate-800 hover:border-rose-800/60 rounded-lg text-xs transition-all"
+                          title="Delete Ticket"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -1,85 +1,97 @@
-# IT Service Help Desk
+# Open-Source Government & Enterprise IT Service Desk
 
-A full-stack IT help desk and ticket management system built with **React**, **Vite**, **Tailwind CSS**, and **Supabase** (PostgreSQL + Auth + RLS).
+[![React](https://img.shields.io/badge/React-19-blue.svg)](https://react.dev)
+[![Vite](https://img.shields.io/badge/Vite-8.1-646CFF.svg)](https://vitejs.dev)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.3-38B2AC.svg)](https://tailwindcss.com)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E.svg)](https://supabase.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
----
-
-## Tech Stack
-
-- **Frontend**: React 19 + Vite
-- **Styling**: Tailwind CSS
-- **Backend / DB**: Supabase (PostgreSQL, Row Level Security, Auth)
-- **Auth**: Supabase GoTrue (email/password)
+An open-source, production-ready **IT Service Desk & Ticket Resolution Portal** designed for government agencies, municipal departments, and enterprise IT teams. Built with React, Vite, Tailwind CSS, and Supabase Row Level Security (RLS).
 
 ---
 
-## Role Hierarchy
+## 🌟 Key Features
 
-| Role | Capabilities |
-| :--- | :--- |
-| `user` | Submit & view own tickets |
-| `staff` | Resolve assigned tickets |
-| `admin` | Assign tickets, activate users, remove users |
-| `super_admin` | Full access: assign roles, manage all users, change password |
-
-> All new user registrations default to `user` role with `is_active = false` (pending admin activation).
+- **Role-Based Access Control (RBAC)**:
+  - **`user`**: Submit IT support tickets, view personal ticket history, and communicate via ticket comments.
+  - **`staff`**: View assigned workload, update ticket resolution status, and post staff responses.
+  - **`admin`**: Dispatch tickets to IT staff, activate pending user accounts, manage user removals, and oversee ticket threads.
+  - **`super_admin`**: Full root authority — manage user roles, activate/deactivate accounts, and update administrative credentials.
+- **Account Activation Guard**: All new public account requests start as `is_active = false` (pending administrator activation) to prevent unauthorized access.
+- **Interactive Ticket Discussion Feed**: Real-time communication on individual tickets with visual role distinction between end-users and IT staff/admins.
+- **Strict Row Level Security (RLS)**: Enforced directly at the PostgreSQL layer via Supabase RLS policies.
+- **Mobile-Responsive & Accessible**: Clean, modern dark-mode UI optimized for desktop, tablet, and mobile displays.
 
 ---
 
-## Project Setup
+## 🛠️ Technology Stack
 
-### 1. Install Dependencies
+- **Frontend**: React 19, Vite, Tailwind CSS v4, Emotion / MUI Icons
+- **Backend Service**: Supabase (PostgreSQL 15+, Auth GoTrue, Row Level Security)
+- **Deployment**: GitHub Pages (`gh-pages`)
+
+---
+
+## 🚀 Quick Setup & Deployment Guide
+
+Follow these step-by-step instructions to deploy your own instance of the IT Service Desk.
+
+### Prerequisites
+- [Node.js](https://nodejs.org) (v18+)
+- A free or self-hosted [Supabase](https://supabase.com) account
+
+---
+
+### Step 1: Clone Repository & Install Dependencies
 
 ```bash
+git clone https://github.com/your-org/it-help-desk.git
+cd it-help-desk
 npm install
 ```
 
-### 2. Configure Environment Variables
+---
 
-Create a `.env` file at the project root:
+### Step 2: Set Up Supabase Backend Database
 
-```env
-VITE_SUPABASE_URL=your_supabase_project_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
+1. Log in to your [Supabase Dashboard](https://supabase.com/dashboard) and create a **New Project**.
+2. Open the **SQL Editor** tab in your Supabase project dashboard.
+3. Open the [`database-schema.sql`](./database-schema.sql) file provided in this repository.
+4. Copy the entire contents of [`database-schema.sql`](./database-schema.sql), paste it into the Supabase SQL Editor, and click **Run**.
 
-### 3. Run the Database Schema
-
-Run [`supabase_schema_iteration_3.sql`](./supabase_schema_iteration_3.sql) **once** in your **Supabase SQL Editor** (Dashboard → SQL Editor → New Query → Paste → Run).
-
-This script:
-- Creates the `profiles` table with `role` and `is_active` columns
-- Sets up Row Level Security (RLS) policies
-- Creates the `handle_new_user()` trigger (auto-creates profiles on signup)
-- Defines `is_admin()`, `is_staff()`, `is_super_admin()` helper functions
-
-### 4. Run the Development Server
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+> This master script automatically configures:
+> - `profiles`, `tickets`, and `comments` tables
+> - Security helper functions (`is_admin()`, `is_staff()`, `is_super_admin()`)
+> - Automatic user registration triggers (`handle_new_user()`)
+> - Strict Row Level Security (RLS) policies across all tables
 
 ---
 
-## Super Admin Setup (One-Time)
+### Step 3: Configure Environment Variables
 
-The Super Admin account must be created **once** using the Supabase Dashboard. This is required because Supabase's internal GoTrue auth engine manages password hashing internally and cannot be seeded reliably via raw SQL.
+Create a `.env` file at the root of the project:
 
-### Step 1 — Create the User in Supabase Dashboard
+```env
+VITE_SUPABASE_URL=https://your-supabase-project-id.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-supabase-anon-or-publishable-key
+```
 
-1. Go to **Supabase Dashboard** → `Authentication` → `Users`
-2. Click **`Add user`** → **`Create new user`**
-3. Enter the credentials:
-   - **Email:** `superadmin@admin.com`
-   - **Password:** `SuperAdmin123!`
-4. ✅ Check **"Auto Confirm User"** (skips email verification)
-5. Click **Create User**
+> **Note**: Replace `your-supabase-project-id` and `your-supabase-anon-or-publishable-key` with the credentials found under **Supabase Project Settings → API**.
 
-### Step 2 — Promote to Super Admin via SQL
+---
 
-Run this in the **Supabase SQL Editor** immediately after creating the user:
+### Step 4: Initial Super Admin Setup (One-Time)
+
+To create the initial **Super Admin** account safely without hitting GoTrue schema mismatches:
+
+1. In your **Supabase Dashboard**, navigate to **Authentication → Users**.
+2. Click **`Add user` → `Create new user`**.
+3. Fill in the initial credentials:
+   - **Email**: `superadmin@admin.com`
+   - **Password**: `SuperAdmin123!`
+   - ✅ Check **"Auto Confirm User"** (bypasses email inbox verification)
+4. Click **Create User**.
+5. Return to the **Supabase SQL Editor** and execute the following promotion query:
 
 ```sql
 UPDATE public.profiles
@@ -87,50 +99,56 @@ SET role = 'super_admin', is_active = true
 WHERE email = 'superadmin@admin.com';
 ```
 
-### Step 3 — Sign In
+---
 
-Go to [http://localhost:5173](http://localhost:5173) and sign in:
+### Step 5: Start Local Development Server
 
-| Field | Value |
-| :--- | :--- |
-| **Email** | `superadmin@admin.com` |
-| **Password** | `SuperAdmin123!` |
+```bash
+npm run dev
+```
 
-> ⚠️ Change the Super Admin password immediately after first login using the **Change Password** button in the Super Admin Command Center.
+Open [http://localhost:5173](http://localhost:5173) in your browser and sign in using your Super Admin credentials!
+
+> ⚠️ **Security Tip**: Immediately change the Super Admin password after your first login via the **Change Password** modal in the Super Admin Command Center.
 
 ---
 
-## User Activation Flow
+## 📦 Deployment to GitHub Pages
 
-1. A new user registers via **"Request Account"** on the login page.
-2. Their account is created with `is_active = false` (blocked from logging in).
-3. An **Admin** or **Super Admin** activates the account from the **User Management** panel.
-4. The user can now sign in and access the help desk.
+This project is pre-configured for automated deployment to GitHub Pages.
 
----
+1. Ensure `vite.config.js` is set up with your repository name:
 
-## Available Scripts
+```javascript
+// vite.config.js
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? '/it-help-desk/' : '/',
+  plugins: [react()],
+}));
+```
 
-| Command | Description |
-| :--- | :--- |
-| `npm run dev` | Start local development server |
-| `npm run build` | Build production bundle |
-| `npm run preview` | Preview production build locally |
-| `npm run lint` | Run ESLint |
+2. Run the deployment script:
 
----
+```bash
+npm run deploy
+```
 
-## Database Schema Files
-
-| File | Purpose |
-| :--- | :--- |
-| `supabase_schema_iteration_2.sql` | Tickets table, RBAC, RLS (Iteration 2) |
-| `supabase_schema_iteration_3.sql` | Profiles `is_active`, `super_admin` role, trigger, RLS (Iteration 3) |
+This command automatically builds the production bundle and pushes it to the `gh-pages` branch.
 
 ---
 
-## Security Notes
+## 🔒 Database Security Architecture (RLS)
 
-- All public sign-ups are locked to `role = 'user'` and `is_active = false` — privilege escalation via registration metadata is blocked at the database trigger level.
-- Row Level Security (RLS) is enforced at the PostgreSQL layer, not just the application layer.
-- The Super Admin seed account (`superadmin@admin.com`) is the only account that cannot be deleted or demoted through the UI.
+All data access is gated by PostgreSQL Row Level Security:
+
+| Table | `user` Access | `staff` Access | `admin` / `super_admin` Access |
+| :--- | :--- | :--- | :--- |
+| **`profiles`** | Own profile | Own profile | All profiles (`SELECT`, `UPDATE`, `DELETE`) |
+| **`tickets`** | Own tickets (`SELECT`, `INSERT`) | Assigned tickets (`SELECT`, `UPDATE`) | All tickets (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) |
+| **`comments`** | Own ticket comments (`SELECT`, `INSERT`) | Assigned ticket comments (`SELECT`, `INSERT`) | All ticket comments (`SELECT`, `INSERT`) |
+
+---
+
+## 📜 License
+
+Distributed under the MIT License. See `LICENSE` for more information.

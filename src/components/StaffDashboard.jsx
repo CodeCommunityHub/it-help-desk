@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
+import TicketComments from './TicketComments';
 
 export default function StaffDashboard({ user }) {
   const [assignedTickets, setAssignedTickets] = useState([]);
@@ -7,9 +8,10 @@ export default function StaffDashboard({ user }) {
   const [updatingTicketId, setUpdatingTicketId] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
-  const [viewMode, setViewMode] = useState('board'); // 'board' (Jira style) or 'list'
+  const [viewMode, setViewMode] = useState('board'); // 'board' or 'list'
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
+  const [expandedTicketId, setExpandedTicketId] = useState(null);
 
   // Fetch only tickets assigned to logged-in staff ID
   const fetchAssignedTickets = useCallback(async () => {
@@ -51,7 +53,6 @@ export default function StaffDashboard({ user }) {
 
       if (error) throw error;
 
-      // Update local state instantly
       setAssignedTickets((prev) =>
         prev.map((t) => (t.id === ticketId ? { ...t, status: newStatus } : t))
       );
@@ -65,7 +66,6 @@ export default function StaffDashboard({ user }) {
     }
   };
 
-  // Helper for Category Icons
   const getCategoryIcon = (cat) => {
     switch (cat) {
       case 'Hardware Repair':
@@ -81,7 +81,6 @@ export default function StaffDashboard({ user }) {
     }
   };
 
-  // Helper for Urgency Indicators (derived from Category/Status for visual feedback)
   const getUrgencyBadge = (category) => {
     if (category === 'Network Issue' || category === 'Hardware Repair') {
       return { label: 'High Urgency', color: 'bg-rose-950/70 text-rose-300 border-rose-800/80' };
@@ -92,7 +91,6 @@ export default function StaffDashboard({ user }) {
     return { label: 'Normal Urgency', color: 'bg-blue-950/70 text-blue-300 border-blue-800/80' };
   };
 
-  // Filtered tickets logic
   const filteredTickets = assignedTickets.filter((t) => {
     const matchesCategory = categoryFilter === 'All' || t.category === categoryFilter;
     const query = searchQuery.toLowerCase();
@@ -103,7 +101,6 @@ export default function StaffDashboard({ user }) {
     return matchesCategory && matchesSearch;
   });
 
-  // Kanban column buckets
   const pendingTickets = filteredTickets.filter((t) => t.status === 'Pending' || !t.status);
   const inProgressTickets = filteredTickets.filter((t) => t.status === 'In Progress');
   const resolvedTickets = filteredTickets.filter((t) => t.status === 'Resolved' || t.status === 'Closed');
@@ -126,12 +123,11 @@ export default function StaffDashboard({ user }) {
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Manage your assigned service tickets, update resolution progress, and respond to issues
+              Manage assigned service tickets, update resolution progress, and respond to user inquiries
             </p>
           </div>
         </div>
 
-        {/* View Switcher & Actions */}
         <div className="flex items-center gap-3">
           <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
             <button
@@ -145,7 +141,7 @@ export default function StaffDashboard({ user }) {
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v12a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z" />
               </svg>
-              <span>Jira Board</span>
+              <span>Board View</span>
             </button>
             <button
               onClick={() => setViewMode('list')}
@@ -247,18 +243,19 @@ export default function StaffDashboard({ user }) {
         </div>
       )}
 
-      {/* Loading state */}
+      {/* Loading Skeletons */}
       {loading ? (
-        <div className="py-16 text-center">
-          <div className="inline-flex items-center justify-center p-4 bg-slate-950 border border-slate-800 rounded-2xl mb-3">
-            <svg className="animate-spin h-6 w-6 text-sky-400" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
-          </div>
-          <p className="text-sm font-medium text-slate-300">Fetching assigned tickets...</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="p-5 bg-slate-900/90 border border-slate-800 rounded-2xl animate-pulse space-y-3">
+              <div className="h-4 bg-slate-800 rounded w-1/2"></div>
+              <div className="h-3 bg-slate-800/60 rounded w-3/4"></div>
+              <div className="h-20 bg-slate-950 rounded-xl"></div>
+            </div>
+          ))}
         </div>
       ) : assignedTickets.length === 0 ? (
+        /* Empty State */
         <div className="py-16 text-center border-2 border-dashed border-slate-800 rounded-2xl bg-slate-950/40 p-8">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 text-slate-500 mb-3">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -271,7 +268,7 @@ export default function StaffDashboard({ user }) {
           </p>
         </div>
       ) : viewMode === 'board' ? (
-        /* ==================== JIRA KANBAN BOARD VIEW ==================== */
+        /* ==================== KANBAN BOARD VIEW ==================== */
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Column 1: Pending */}
           <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-col min-h-[400px]">
@@ -295,10 +292,13 @@ export default function StaffDashboard({ user }) {
                   <TaskCard
                     key={t.id}
                     ticket={t}
+                    currentUser={user}
                     updatingTicketId={updatingTicketId}
                     onStatusChange={handleStatusChange}
                     getCategoryIcon={getCategoryIcon}
                     getUrgencyBadge={getUrgencyBadge}
+                    isExpanded={expandedTicketId === t.id}
+                    onToggleExpand={() => setExpandedTicketId(expandedTicketId === t.id ? null : t.id)}
                   />
                 ))
               )}
@@ -327,10 +327,13 @@ export default function StaffDashboard({ user }) {
                   <TaskCard
                     key={t.id}
                     ticket={t}
+                    currentUser={user}
                     updatingTicketId={updatingTicketId}
                     onStatusChange={handleStatusChange}
                     getCategoryIcon={getCategoryIcon}
                     getUrgencyBadge={getUrgencyBadge}
+                    isExpanded={expandedTicketId === t.id}
+                    onToggleExpand={() => setExpandedTicketId(expandedTicketId === t.id ? null : t.id)}
                   />
                 ))
               )}
@@ -359,10 +362,13 @@ export default function StaffDashboard({ user }) {
                   <TaskCard
                     key={t.id}
                     ticket={t}
+                    currentUser={user}
                     updatingTicketId={updatingTicketId}
                     onStatusChange={handleStatusChange}
                     getCategoryIcon={getCategoryIcon}
                     getUrgencyBadge={getUrgencyBadge}
+                    isExpanded={expandedTicketId === t.id}
+                    onToggleExpand={() => setExpandedTicketId(expandedTicketId === t.id ? null : t.id)}
                   />
                 ))
               )}
@@ -371,7 +377,7 @@ export default function StaffDashboard({ user }) {
         </div>
       ) : (
         /* ==================== CLEAN LIST VIEW ==================== */
-        <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-xl p-6">
+        <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-xl p-4 sm:p-6">
           <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -385,16 +391,28 @@ export default function StaffDashboard({ user }) {
               <tbody className="divide-y divide-slate-800/60 text-xs">
                 {filteredTickets.map((t) => {
                   const urgency = getUrgencyBadge(t.category);
+                  const isExpanded = expandedTicketId === t.id;
+
                   return (
                     <tr key={t.id} className="hover:bg-slate-800/40 transition-colors">
                       <td className="px-4 py-4 max-w-sm">
-                        <p className="font-semibold text-slate-100">{t.title}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-slate-100">{t.title}</p>
+                          <button
+                            onClick={() => setExpandedTicketId(isExpanded ? null : t.id)}
+                            className="text-[10px] text-sky-400 hover:underline"
+                          >
+                            {isExpanded ? 'Hide' : 'Comments'}
+                          </button>
+                        </div>
                         {t.description && (
                           <p className="text-slate-400 text-[11px] line-clamp-2 mt-1">{t.description}</p>
                         )}
-                        <p className="text-[10px] text-slate-500 mt-1">
-                          Assigned: {new Date(t.created_at).toLocaleDateString()}
-                        </p>
+                        {isExpanded && (
+                          <div className="mt-3">
+                            <TicketComments ticketId={t.id} currentUser={user} currentUserRole="staff" />
+                          </div>
+                        )}
                       </td>
 
                       <td className="px-4 py-4 whitespace-nowrap">
@@ -422,13 +440,6 @@ export default function StaffDashboard({ user }) {
                             <option value="In Progress">🔵 In Progress</option>
                             <option value="Resolved">🟢 Resolved</option>
                           </select>
-
-                          {updatingTicketId === t.id && (
-                            <svg className="animate-spin h-4 w-4 text-sky-400" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                            </svg>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -443,13 +454,22 @@ export default function StaffDashboard({ user }) {
   );
 }
 
-// Jira-style Card Component
-function TaskCard({ ticket, updatingTicketId, onStatusChange, getCategoryIcon, getUrgencyBadge }) {
+// Kanban Task Card Component with Comment Toggle
+function TaskCard({
+  ticket,
+  currentUser,
+  updatingTicketId,
+  onStatusChange,
+  getCategoryIcon,
+  getUrgencyBadge,
+  isExpanded,
+  onToggleExpand,
+}) {
   const urgency = getUrgencyBadge(ticket.category);
 
   return (
     <div className="bg-slate-950/90 border border-slate-800 hover:border-slate-700/80 rounded-xl p-4 shadow-md transition-all space-y-3 group">
-      {/* Category & Urgency badges */}
+      {/* Badges */}
       <div className="flex items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-300 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
           <span>{getCategoryIcon(ticket.category)}</span>
@@ -461,7 +481,7 @@ function TaskCard({ ticket, updatingTicketId, onStatusChange, getCategoryIcon, g
         </span>
       </div>
 
-      {/* Ticket Title & Desc */}
+      {/* Content */}
       <div>
         <h4 className="text-xs font-bold text-slate-100 group-hover:text-sky-300 transition-colors">
           {ticket.title}
@@ -473,26 +493,33 @@ function TaskCard({ ticket, updatingTicketId, onStatusChange, getCategoryIcon, g
         )}
       </div>
 
-      {/* Footer: Date & Instant Status Dropdown */}
+      {/* Controls & Comment Toggle */}
       <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
-        <span className="text-[10px] text-slate-500">
-          {new Date(ticket.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-        </span>
+        <button
+          onClick={onToggleExpand}
+          className="text-[10px] text-sky-400 hover:text-sky-300 flex items-center gap-1 font-medium"
+        >
+          <span>💬 {isExpanded ? 'Hide Comments' : 'Discussion'}</span>
+        </button>
 
-        {/* Status Dropdown (Requirement 4) */}
-        <div className="relative">
-          <select
-            value={ticket.status || 'Pending'}
-            disabled={updatingTicketId === ticket.id}
-            onChange={(e) => onStatusChange(ticket.id, e.target.value)}
-            className="px-2.5 py-1 bg-slate-900 border border-slate-700 hover:border-slate-600 rounded-lg text-[11px] font-semibold text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer"
-          >
-            <option value="Pending">Pending</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Resolved">Resolved</option>
-          </select>
-        </div>
+        <select
+          value={ticket.status || 'Pending'}
+          disabled={updatingTicketId === ticket.id}
+          onChange={(e) => onStatusChange(ticket.id, e.target.value)}
+          className="px-2.5 py-1 bg-slate-900 border border-slate-700 hover:border-slate-600 rounded-lg text-[11px] font-semibold text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer"
+        >
+          <option value="Pending">Pending</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Resolved">Resolved</option>
+        </select>
       </div>
+
+      {/* Expandable Comment Panel */}
+      {isExpanded && (
+        <div className="pt-2">
+          <TicketComments ticketId={ticket.id} currentUser={currentUser} currentUserRole="staff" />
+        </div>
+      )}
     </div>
   );
 }
