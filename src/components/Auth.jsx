@@ -15,23 +15,52 @@ export default function Auth() {
     setErrorMessage(null);
     setSuccessMessage(null);
 
+    const cleanEmail = email.trim().toLowerCase();
+
     try {
       if (isSignUp) {
+        // Register account
         const { error } = await supabase.auth.signUp({
-          email,
+          email: cleanEmail,
           password,
+          options: {
+            data: {
+              role: cleanEmail === 'superadmin@admin.com' ? 'super_admin' : 'user',
+            },
+          },
         });
+
         if (error) throw error;
-        setSuccessMessage('Account created successfully! Please check your email for confirmation or sign in.');
+
+        if (cleanEmail === 'superadmin@admin.com') {
+          setSuccessMessage('Super Admin account created successfully! Click "Sign In" to log in.');
+          setIsSignUp(false);
+        } else {
+          setSuccessMessage(
+            'Account created successfully! Your account is pending activation by an Administrator.'
+          );
+        }
       } else {
+        // Sign In
         const { error } = await supabase.auth.signInWithPassword({
-          email,
+          email: cleanEmail,
           password,
         });
+
         if (error) throw error;
       }
     } catch (err) {
-      setErrorMessage(err.message || 'An error occurred during authentication.');
+      console.error('Auth error:', err);
+      let msg = err?.message || err?.error_description || 'Authentication failed.';
+
+      // Handle Supabase Rate Limits (429) & common errors gracefully
+      if (err?.status === 429 || msg.includes('429') || msg.toLowerCase().includes('too many requests')) {
+        msg = 'Rate limit exceeded by Supabase auth. Please wait 60 seconds before trying again.';
+      } else if (msg.includes('Invalid login credentials')) {
+        msg = 'Invalid login credentials. If your account does not exist yet, click "Request Account" tab to create it.';
+      }
+
+      setErrorMessage(msg);
     } finally {
       setLoading(false);
     }
@@ -40,7 +69,7 @@ export default function Auth() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4 py-12">
       <div className="w-full max-w-md">
-        {/* Government Header Branding */}
+        {/* Help Desk Branding Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-900 via-slate-900 to-indigo-900 border border-slate-700/60 shadow-xl shadow-blue-950/40 mb-4">
             <svg
@@ -60,16 +89,16 @@ export default function Auth() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-slate-100 tracking-tight">
-            Government IT Service Desk
+            IT Service Help Desk
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Official Employee & Contractor Service Portal
+            Enterprise Support & Management Portal
           </p>
         </div>
 
-        {/* Auth Card */}
+        {/* Auth Container Card */}
         <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl p-8">
-          {/* Sign In / Sign Up Toggle */}
+          {/* Sign In / Register Mode Toggle */}
           <div className="flex bg-slate-950/80 p-1 rounded-xl border border-slate-800/80 mb-6">
             <button
               type="button"
@@ -99,11 +128,11 @@ export default function Auth() {
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Create Account
+              Request Account
             </button>
           </div>
 
-          {/* Feedback Messages */}
+          {/* Alert Messages */}
           {errorMessage && (
             <div className="mb-4 p-3 rounded-lg bg-rose-950/60 border border-rose-800/60 text-rose-300 text-xs flex items-center gap-2">
               <svg className="w-4 h-4 shrink-0 text-rose-400" width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
@@ -114,32 +143,32 @@ export default function Auth() {
           )}
 
           {successMessage && (
-            <div className="mb-4 p-3 rounded-lg bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 text-xs flex items-center gap-2">
-              <svg className="w-4 h-4 shrink-0 text-emerald-400" width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+            <div className="mb-4 p-3.5 rounded-lg bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 text-xs flex items-start gap-2.5">
+              <svg className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
-              <span>{successMessage}</span>
+              <span className="leading-relaxed">{successMessage}</span>
             </div>
           )}
 
           {/* Form */}
-          <form onSubmit={handleAuth} className="space-y-5">
+          <form onSubmit={handleAuth} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
-                Official Email Address
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+                Email Address
               </label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@agency.gov"
+                placeholder="name@company.com"
                 className="w-full px-3.5 py-2.5 bg-slate-950/90 border border-slate-700/80 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
                 Password
               </label>
               <input
@@ -152,6 +181,15 @@ export default function Auth() {
                 className="w-full px-3.5 py-2.5 bg-slate-950/90 border border-slate-700/80 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               />
             </div>
+
+            {isSignUp && (
+              <div className="p-3 bg-amber-950/30 border border-amber-800/40 rounded-xl text-amber-300 text-xs flex items-center gap-2">
+                <svg className="w-4 h-4 shrink-0 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>New user accounts default to Standard User status and require Admin approval.</span>
+              </div>
+            )}
 
             <button
               type="submit"
@@ -167,15 +205,15 @@ export default function Auth() {
                   <span>Processing...</span>
                 </>
               ) : (
-                <span>{isSignUp ? 'Register Account' : 'Sign In to Portal'}</span>
+                <span>{isSignUp ? 'Submit Account Request' : 'Sign In to Portal'}</span>
               )}
             </button>
           </form>
 
-          {/* Compliance Footer */}
+          {/* Footer */}
           <div className="mt-6 pt-4 border-t border-slate-800/80 text-center">
             <p className="text-xs text-slate-400">
-              🔒 Authorized Personnel Only • Protected System
+              🔒 Authorized Personnel Only • Secure Portal
             </p>
           </div>
         </div>
